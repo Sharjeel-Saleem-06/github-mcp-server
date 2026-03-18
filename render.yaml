@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: github-mcp-server
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server-remote.js
+    envVars:
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_USERNAME
+        sync: false
+      - key: MCP_SECRET_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /health
+    autoDeploy: true
