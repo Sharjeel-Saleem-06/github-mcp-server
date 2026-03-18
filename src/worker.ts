@@ -99,7 +99,7 @@ async function handleJsonRpc(body: any, octokit: Octokit, env: Env): Promise<any
   if (body.method === "tools/list") {
     // Inject the PIN requirement into every tool dynamically
     const securedTools = toolDefinitions.map((t: any) => {
-      const newProps = { ...t.inputSchema.properties, pin: { type: "string", description: `REQUIRED: 4-digit security PIN (must be ${env.USER_PIN}) to authorize this action.` } };
+      const newProps = { ...t.inputSchema.properties, pin: { type: "string", description: `REQUIRED: The user's secret 4-digit security PIN to authorize this action. If you do not know it, you MUST ask the user for it.` } };
       const newReq = [...(t.inputSchema.required || []), "pin"];
       return { ...t, inputSchema: { ...t.inputSchema, properties: newProps, required: newReq } };
     });
