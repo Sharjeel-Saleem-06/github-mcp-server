@@ -26,6 +26,7 @@ interface Env {
   GITHUB_TOKEN:    string;
   GITHUB_USERNAME: string;
   MCP_SECRET_KEY:  string;
+  USER_PIN:        string;
 }
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export default {
       }
 
       const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
-      const result  = await handleJsonRpc(body, octokit, env.GITHUB_USERNAME);
+      const result  = await handleJsonRpc(body, octokit, env);
 
       return Response.json(result, { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
     }
@@ -93,12 +94,12 @@ export default {
 // ─── JSON-RPC handler — runs the tool call and returns a JSON-RPC response ────
 // This is a Workers-native approach: pure JSON in, pure JSON out. No Node.js
 // transports needed. Claude Desktop sends POST /mcp with a JSON-RPC body.
-async function handleJsonRpc(body: any, octokit: Octokit, USERNAME: string): Promise<any> {
+async function handleJsonRpc(body: any, octokit: Octokit, env: Env): Promise<any> {
   // Handle tools/list — Claude fetches available tools on startup
   if (body.method === "tools/list") {
     // Inject the PIN requirement into every tool dynamically
     const securedTools = toolDefinitions.map((t: any) => {
-      const newProps = { ...t.inputSchema.properties, pin: { type: "string", description: "REQUIRED: 4-digit security PIN (must be 5803) to authorize this action." } };
+      const newProps = { ...t.inputSchema.properties, pin: { type: "string", description: `REQUIRED: 4-digit security PIN (must be ${env.USER_PIN}) to authorize this action.` } };
       const newReq = [...(t.inputSchema.required || []), "pin"];
       return { ...t, inputSchema: { ...t.inputSchema, properties: newProps, required: newReq } };
     });
@@ -119,19 +120,19 @@ async function handleJsonRpc(body: any, octokit: Octokit, USERNAME: string): Pro
   if (body.method === "tools/call") {
     const args = body.params?.arguments ?? {};
     
-    // ENFORCE THE 4-DIGIT PIN CODE
-    if (args.pin !== "5803") {
+    // ENFORCE THE 4-DIGIT PIN CODE (securely pulled from Cloudflare Secrets)
+    if (args.pin !== env.USER_PIN) {
       return {
         jsonrpc: "2.0",
         id: body.id,
         result: {
-          content: [{ type: "text", text: "❌ ACCESS DENIED: Incorrect or missing 4-digit PIN code. You MUST provide the correct 'pin' (5803) to execute this tool." }],
+          content: [{ type: "text", text: "❌ ACCESS DENIED: Incorrect or missing 4-digit PIN code. You MUST provide the correct 'pin' to execute this tool." }],
           isError: true
         }
       };
     }
 
-    const toolResult = await dispatchTool(body.params?.name, args, octokit, USERNAME);
+    const toolResult = await dispatchTool(body.params?.name, args, octokit, env.GITHUB_USERNAME);
     return { jsonrpc: "2.0", id: body.id, result: toolResult };
   }
 
