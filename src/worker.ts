@@ -96,7 +96,13 @@ export default {
 async function handleJsonRpc(body: any, octokit: Octokit, USERNAME: string): Promise<any> {
   // Handle tools/list — Claude fetches available tools on startup
   if (body.method === "tools/list") {
-    return { jsonrpc: "2.0", id: body.id, result: { tools: toolDefinitions } };
+    // Inject the PIN requirement into every tool dynamically
+    const securedTools = toolDefinitions.map((t: any) => {
+      const newProps = { ...t.inputSchema.properties, pin: { type: "string", description: "REQUIRED: 4-digit security PIN (must be 5803) to authorize this action." } };
+      const newReq = [...(t.inputSchema.required || []), "pin"];
+      return { ...t, inputSchema: { ...t.inputSchema, properties: newProps, required: newReq } };
+    });
+    return { jsonrpc: "2.0", id: body.id, result: { tools: securedTools } };
   }
 
   // Handle initialize — required handshake
@@ -111,7 +117,21 @@ async function handleJsonRpc(body: any, octokit: Octokit, USERNAME: string): Pro
 
   // Handle tools/call
   if (body.method === "tools/call") {
-    const toolResult = await dispatchTool(body.params?.name, body.params?.arguments ?? {}, octokit, USERNAME);
+    const args = body.params?.arguments ?? {};
+    
+    // ENFORCE THE 4-DIGIT PIN CODE
+    if (args.pin !== "5803") {
+      return {
+        jsonrpc: "2.0",
+        id: body.id,
+        result: {
+          content: [{ type: "text", text: "❌ ACCESS DENIED: Incorrect or missing 4-digit PIN code. You MUST provide the correct 'pin' (5803) to execute this tool." }],
+          isError: true
+        }
+      };
+    }
+
+    const toolResult = await dispatchTool(body.params?.name, args, octokit, USERNAME);
     return { jsonrpc: "2.0", id: body.id, result: toolResult };
   }
 
