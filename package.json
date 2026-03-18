@@ -1,0 +1,34 @@
+{
+  "name": "github-mcp-server",
+  "version": "1.0.0",
+  "description": "A fully automated GitHub MCP Server for Claude Desktop",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "start:remote": "tsx src/server-remote.ts",
+    "build": "tsc",
+    "build:check": "tsc --noEmit",
+    "dev": "tsx --watch src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "github",
+    "claude"
+  ],
+  "author": "muhammadsharjeel",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@octokit/rest": "^20.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.0.0",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
